@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wahid Sports Academy - WSA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+        .nav-link {
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .nav-link.active {
+            background-color: #4f46e5;
+            color: white;
+            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+        }
+        .nav-link:not(.active):hover {
+            background-color: #e5e7eb;
+            color: #4b5563;
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -125px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+        .export-import {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9fafb;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            background-color: #4f46e5;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+        .notification.show {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body class="p-6 md:p-12">
+    <div class="max-w-7xl mx-auto bg-white shadow-xl rounded-2xl p-6 md:p-10">
+        <header class="flex items-center justify-between flex-wrap mb-8">
+            <div class="flex items-center space-x-4">
+                <div class="text-4xl">🏸</div>
+                <h1 class="text-4xl md:text-5xl font-extrabold text-gray-800 tracking-tight">Wahid Sports Academy - WSA</h1>
+            </div>
+            <div class="flex items-center space-x-4 mt-4 md:mt-0">
+                <button id="resetBtn" class="bg-gray-200 text-gray-700 font-semibold py-2 px-6 rounded-full shadow-lg hover:bg-gray-300 transition duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2">
+                    Reset Data
+                </button>
+                <button id="exportBtn" class="bg-green-200 text-green-700 font-semibold py-2 px-6 rounded-full shadow-lg hover:bg-green-300 transition duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2">
+                    Export Data
+                </button>
+                <button id="importBtn" class="bg-blue-200 text-blue-700 font-semibold py-2 px-6 rounded-full shadow-lg hover:bg-blue-300 transition duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
+                    Import Data
+                </button>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="flex justify-center md:justify-start space-x-2 md:space-x-4 mb-8">
+            <button id="masterfileBtn" class="nav-link active">Masterfile</button>
+            <button id="outstandingBtn" class="nav-link">Outstanding Fees</button>
+            <button id="accountingBtn" class="nav-link">Accounting</button>
+            <button id="dashboardBtn" class="nav-link">Performance Dashboard</button>
+        </nav>
+
+        <!-- Main Application Content -->
+        <div id="app-container">
+            <!-- Views will be rendered here -->
+        </div>
+
+        <!-- Export/Import Section -->
+        <div class="export-import mt-8">
+            <h3 class="text-lg font-semibold mb-4">Data Management</h3>
+            <p class="text-sm text-gray-600 mb-4">Export your data to a file for backup or import previously exported data.</p>
+            <input type="file" id="importFile" class="hidden" accept=".json">
+        </div>
+
+        <!-- Message Modal -->
+        <div id="messageModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" style="z-index: 1000;">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div class="mt-3 text-center">
+                    <h3 id="modalTitle" class="text-lg leading-6 font-medium text-gray-900">Message</h3>
+                    <div class="mt-2 px-7 py-3">
+                        <p id="modalMessage" class="text-sm text-gray-500">This is a message.</p>
+                    </div>
+                    <div class="items-center px-4 py-3">
+                        <button id="modalCloseBtn" class="px-4 py-2 bg-indigo-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                            OK
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Confirmation Modal -->
+        <div id="confirmModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" style="z-index: 1000;">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div class="mt-3 text-center">
+                    <h3 id="confirmModalTitle" class="text-lg leading-6 font-medium text-gray-900">Confirm Action</h3>
+                    <div class="mt-2 px-7 py-3">
+                        <p id="confirmModalMessage" class="text-sm text-gray-500">Are you sure you want to proceed?</p>
+                    </div>
+                    <div class="items-center px-4 py-3 sm:flex sm:flex-row-reverse">
+                        <button id="confirmBtn" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus-ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Confirm
+                        </button>
+                        <button id="cancelBtn" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Modal -->
+        <div id="paymentModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" style="z-index: 1000;">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div class="mt-3 text-center">
+                    <h3 id="paymentModalTitle" class="text-lg leading-6 font-medium text-gray-900">Process Payment</h3>
+                    <div class="mt-2 px-7 py-3">
+                        <p id="paymentModalMessage" class="text-sm text-gray-500 mb-4"></p>
+                        <input type="number" id="paymentAmountInput" placeholder="Enter amount to pay (SAR)" class="p-2 w-full border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="items-center px-4 py-3 sm:flex sm:flex-row-reverse">
+                        <button id="processPaymentBtn" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Process Payment
+                        </button>
+                        <button id="cancelPaymentBtn" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Using Luxon for date handling
+        const DateTime = luxon.DateTime;
+
+        // Application state
+        let studentsData = [];
+        let costsData = [];
+        let dashboardData = [];
+        let myChart = null;
+        let myCostChart = null;
+        const TRANSPORTATION_FEE = 100;
+        let feeHistoryData = {};
+        let currentView = 'masterfile';
+        
+        // Define service names and their associated costs for calculations
+        const services = [
+            'IISR Badminton B1', 'IISR Badminton B2', 'IISR Badminton B3', 'IISR Badminton B4',
+            'IISR Karate B1', 'IISR Karate B2', 'MMEIS Karate', 'MMEIS Basketball', 
+            'SBG Badminton B1', 'SBG Badminton B2', 'SLISR Badminton'
+        ];
+        const serviceCosts = {
+            'IISR Badminton B1': 50, 'IISR Badminton B2': 50, 'IISR Badminton B3': 50, 'IISR Badminton B4': 50,
+            'IISR Karate B1': 60, 'IISR Karate B2': 60, 'MMEIS Karate': 60, 'MMEIS Basketball': 70, 
+            'SBG Badminton B1': 50, 'SBG Badminton B2': 50, 'SLISR Badminton': 50
+        };
+
+        // System date
+        const systemDate = DateTime.local();
+
+        // Modal functions
+        function showModal(title, message, callback = null) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMessage').innerHTML = message;
+            const closeBtn = document.getElementById('modalCloseBtn');
+            closeBtn.onclick = () => {
+                document.getElementById('messageModal').classList.add('hidden');
+                if (callback) callback();
+            };
+            document.getElementById('messageModal').classList.remove('hidden');
+        }
+        
+        // Confirmation modal function
+        function showConfirmModal(title, message, onConfirm, onCancel = null) {
+            document.getElementById('confirmModalTitle').textContent = title;
+            document.getElementById('confirmModalMessage').innerHTML = message;
+            document.getElementById('confirmModal').classList.remove('hidden');
+
+            const confirmBtn = document.getElementById('confirmBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+            
+            confirmBtn.onclick = () => {
+                document.getElementById('confirmModal').classList.add('hidden');
+                if (onConfirm) onConfirm();
+            };
+
+            cancelBtn.onclick = () => {
+                document.getElementById('confirmModal').classList.add('hidden');
+                if (onCancel) onCancel();
+            };
+        }
+
+        // Show notification
+        function showNotification(message, duration = 3000) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            // Show notification
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+            
+            // Hide after duration
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, duration);
+        }
+
+        // Data storage functions
+        function saveData() {
+            localStorage.setItem('wsa_students', JSON.stringify(studentsData));
+            localStorage.setItem('wsa_costs', JSON.stringify(costsData));
+            localStorage.setItem('wsa_dashboard', JSON.stringify(dashboardData));
+            showNotification('Data saved successfully!');
+        }
+
+        function loadData() {
+            const savedStudents = localStorage.getItem('wsa_students');
+            const savedCosts = localStorage.getItem('wsa_costs');
+            const savedDashboard = localStorage.getItem('wsa_dashboard');
+            
+            if (savedStudents) studentsData = JSON.parse(savedStudents);
+            if (savedCosts) costsData = JSON.parse(savedCosts);
+            if (savedDashboard) dashboardData = JSON.parse(savedDashboard);
+            
+            // If no data exists, seed with initial data
+            if (studentsData.length === 0) {
+                seedInitialData();
+            }
+        }
+
+        // Export and import functions
+        function exportData() {
+            const data = {
+                students: studentsData,
+                costs: costsData,
+                dashboard: dashboardData,
+                exportedAt: new Date().toISOString()
+            };
+            
+            const dataStr = JSON.stringify(data, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportFileDefaultName = `wsa_data_${systemDate.toFormat('yyyy-LL-dd')}.json`;
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+            
+            showModal("Export Successful", "Your data has been exported successfully.");
+        }
+
+        function importData(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    if (importedData.students) studentsData = importedData.students;
+                    if (importedData.costs) costsData = importedData.costs;
+                    if (importedData.dashboard) dashboardData = importedData.dashboard;
+                    
+                    saveData();
+                    renderView(currentView);
+                    showModal("Import Successful", "Your data has been imported successfully.");
+                } catch (error) {
+                    console.error("Error importing data:", error);
+                    showModal("Import Error", "Failed to import data. The file may be corrupted or in an invalid format.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Helper function to get a random item from an array
+        function getRandomItem(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+        
+        function seedInitialData() {
+            showModal("Populating Database", "Creating 20 sample student records. This may take a moment...");
+            
+            const names = ['Ahmad', 'Fatima', 'Omar', 'Layla', 'Khalid', 'Sara', 'Yousef', 'Noura', 'Ali', 'Huda',
+                           'Saud', 'Reem', 'Abdullah', 'Jana', 'Ziad', 'Amira', 'Fahad', 'Dalal', 'Saeed', 'Lama'];
+            const guardians = ['Mohammad', 'Aisha', 'Ibrahim', 'Zainab', 'Yassin', 'Maha', 'Hamad', 'Saba', 'Tariq', 'Nawal',
+                               'Rashid', 'Dana', 'Sultan', 'Mariam', 'Fadi', 'Amal', 'Jassim', 'Haya', 'Majid', 'Leen'];
+            const addresses = ['123 King Fahd St, Dammam', '456 Prince Mohammed St, Khobar', '789 Saudi Arabia Rd, Dhahran', '101 Al-Qatif Rd, Qatif', '202 Al-Jubail Blvd, Jubail'];
+            
+            for (let i = 0; i < 20; i++) {
+                const name = names[i];
+                const guardianName = guardians[i];
+                const guardianContactNumber = `+9665${Math.floor(10000000 + Math.random() * 90000000)}`;
+                const service = getRandomItem(services);
+                const address = getRandomItem(addresses);
+                const hasTransportation = Math.random() > 0.5;
+                const monthlyFee = serviceCosts[service] || 50;
+                const monthlyCost = serviceCosts[service] || 50;
+                const transportationFees = hasTransportation ? TRANSPORTATION_FEE : 0;
+                const totalMonthlyFee = monthlyFee + transportationFees;
+
+                let joinDate;
+                let outstandingBalance;
+                let lastPaymentDate;
+                let feeHistory = [];
+                
+                // Scenario 1: Exceeded 60 days limit (5 students)
+                if (i < 5) {
+                    const month1Due = systemDate.minus({ months: 3 }).toISODate();
+                    const month2Due = systemDate.minus({ months: 2 }).toISODate();
+                    joinDate = systemDate.minus({ months: 3 }).toISODate();
+                    lastPaymentDate = systemDate.minus({ months: 2, days: 5 }).toISODate();
+                    outstandingBalance = totalMonthlyFee * 2;
+                    feeHistory = [
+                        { amount: totalMonthlyFee, date: month1Due, paid: false },
+                        { amount: totalMonthlyFee, date: month2Due, paid: false },
+                    ];
+                } 
+                // Scenario 2: Exceeded due date, but not 60 days (5 students)
+                else if (i >= 5 && i < 10) {
+                    const month1Due = systemDate.minus({ months: 1 }).toISODate();
+                    joinDate = systemDate.minus({ months: 1 }).toISODate();
+                    lastPaymentDate = systemDate.minus({ days: 10 }).toISODate();
+                    outstandingBalance = totalMonthlyFee;
+                    feeHistory = [
+                        { amount: totalMonthlyFee, date: month1Due, paid: false }
+                    ];
+                }
+                // Scenario 3: Not exceeded due date (10 students)
+                else {
+                    joinDate = systemDate.toISODate();
+                    lastPaymentDate = systemDate.toISODate();
+                    outstandingBalance = 0;
+                    feeHistory = [];
+                }
+                
+                const newStudent = {
+                    id: 'student_' + Date.now() + i,
+                    name,
+                    joinDate,
+                    monthlyFee,
+                    outstandingBalance,
+                    lastPaymentDate,
+                    serviceName: service,
+                    monthlyCost,
+                    guardianName,
+                    guardianContactNumber,
+                    subscriptionStatus: 'Active',
+                    address,
+                    transportation: hasTransportation ? 'Yes' : 'No',
+                    transportationFees,
+                    feeHistory: JSON.stringify(feeHistory),
+                    createdAt: DateTime.local().toMillis() + i 
+                };
+                
+                studentsData.push(newStudent);
+            }
+            
+            // Generate some sample costs
+            for (let i = 0; i < 10; i++) {
+                const costTypes = ['Rent', 'Equipment', 'Salaries', 'Utilities', 'Maintenance'];
+                const cost = {
+                    id: 'cost_' + Date.now() + i,
+                    description: costTypes[Math.floor(Math.random() * costTypes.length)],
+                    amount: Math.floor(Math.random() * 1000) + 100,
+                    date: systemDate.minus({ days: Math.floor(Math.random() * 30) }).toISODate(),
+                    costCenter: services[Math.floor(Math.random() * services.length)],
+                    createdAt: DateTime.local().toMillis() + i
+                };
+                costsData.push(cost);
+            }
+            
+            saveData();
+            showModal("Data Population Complete", "The database has been filled with 20 sample student records and 10 sample costs.");
+        }
+
+        // DOM elements
+        const appContainer = document.getElementById('app-container');
+        const resetBtn = document.getElementById('resetBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const importBtn = document.getElementById('importBtn');
+        const importFile = document.getElementById('importFile');
+        const masterfileBtn = document.getElementById('masterfileBtn');
+        const outstandingBtn = document.getElementById('outstandingBtn');
+        const dashboardBtn = document.getElementById('dashboardBtn');
+        const accountingBtn = document.getElementById('accountingBtn');
+        const paymentModal = document.getElementById('paymentModal');
+        const paymentModalTitle = document.getElementById('paymentModalTitle');
+        const paymentModalMessage = document.getElementById('paymentModalMessage');
+        const paymentAmountInput = document.getElementById('paymentAmountInput');
+        const processPaymentBtn = document.getElementById('processPaymentBtn');
+        const cancelPaymentBtn = document.getElementById('cancelPaymentBtn');
+
+        // Navigation links
+        masterfileBtn.addEventListener('click', () => renderView('masterfile'));
+        outstandingBtn.addEventListener('click', () => renderView('outstanding'));
+        dashboardBtn.addEventListener('click', () => renderView('dashboard'));
+        accountingBtn.addEventListener('click', () => renderView('accounting'));
+
+        // Data management buttons
+        resetBtn.addEventListener('click', handleReset);
+        exportBtn.addEventListener('click', exportData);
+        importBtn.addEventListener('click', () => importFile.click());
+        importFile.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                importData(e.target.files[0]);
+            }
+        });
+
+        // Main view rendering function
+        function renderView(viewName) {
+            currentView = viewName;
+            
+            // Update active state of nav links
+            document.querySelectorAll('.nav-link').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`${viewName}Btn`).classList.add('active');
+            
+            appContainer.innerHTML = '';
+            
+            // Render the selected view
+            switch (viewName) {
+                case 'masterfile':
+                    renderMasterfileView();
+                    break;
+                case 'outstanding':
+                    renderOutstandingFeesView();
+                    break;
+                case 'dashboard':
+                    renderDashboardView();
+                    break;
+                case 'accounting':
+                    renderAccountingView();
+                    break;
+            }
+        }
+
+        function calculateOutstandingCategories() {
+            const categories = {
+                over60Days: 0,
+                over30Days: 0,
+                lessThan30Days: 0
+            };
+
+            const outstandingStudents = studentsData.filter(s => parseFloat(s.outstandingBalance) > 0);
+            
+            outstandingStudents.forEach(student => {
+                const lastPaymentDate = student.lastPaymentDate ? DateTime.fromISO(student.lastPaymentDate) : null;
+                const daysSincePayment = lastPaymentDate ? systemDate.diff(lastPaymentDate, 'days').days : Infinity;
+                
+                const outstandingAmount = parseFloat(student.outstandingBalance);
+
+                if (daysSincePayment > 60) {
+                    categories.over60Days += outstandingAmount;
+                } else if (daysSincePayment > 30) {
+                    categories.over30Days += outstandingAmount;
+                } else {
+                    categories.lessThan30Days += outstandingAmount;
+                }
+            });
+
+            return [
+                { period: 'Over 60 Days Overdue', amount: categories.over60Days },
+                { period: '30-60 Days Overdue', amount: categories.over30Days },
+                { period: 'Less than 30 Days Overdue', amount: categories.lessThan30Days },
+            ];
+        }
+
+        function updateSummaryMetrics() {
+            const totalOutstanding = studentsData.reduce((sum, student) => sum + parseFloat(student.outstandingBalance || 0), 0);
+            const totalRevenue = studentsData.filter(student => student.subscriptionStatus === 'Active').reduce((sum, student) => sum + parseFloat(student.monthlyFee || 0) + parseFloat(student.transportationFees || 0), 0);
+            const totalCost = studentsData.filter(student => student.subscriptionStatus === 'Active').reduce((sum, student) => sum + parseFloat(student.monthlyCost || 0), 0) + costsData.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
+            const totalProfit = totalRevenue - totalCost;
+        }
+
+        // --- View-specific Render Functions ---
+
+        function renderMasterfileView() {
+            const today = DateTime.local().toISODate();
+            const masterfileHtml = `
+                <section class="mb-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Add New Student</h2>
+                    <form id="addStudentForm" class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 p-6 rounded-xl border border-gray-200">
+                        <input type="text" id="studentName" placeholder="Student Name" required class="p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input type="text" id="address" placeholder="Address" required class="p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input type="date" id="joinDate" value="${today}" required class="p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <select type="text" id="serviceName" placeholder="Service Name" required class="p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">Select Service</option>
+                            ${services.map(s => `<option value="${s}">${s}</option>`).join('')}
+                        </select>
+                        <input type="number" id="monthlyFee" placeholder="Monthly Fee (SAR)" required readonly class="p-3 rounded-lg border border-gray-300 bg-gray-200 cursor-not-allowed">
+                        <select id="transportation" required class="p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">Transportation?</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                        <input type="number" id="transportationFees" placeholder="Transportation Fees (SAR)" readonly class="p-3 rounded-lg border border-gray-300 bg-gray-200 cursor-not-allowed">
+                        <input type="text" id="guardianName" placeholder="Guardian Name" required class="p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input type="tel" id="guardianContactNumber" placeholder="Guardian Contact Number" required class="p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <div class="col-span-1 md:col-span-4 flex justify-end">
+                            <button type="submit" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 transition duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Add Student</button>
+                        </div>
+                    </form>
+                </section>
+                <section>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">All Students</h2>
+                    <div class="overflow-x-auto shadow-md rounded-xl">
+                        <table class="w-full text-left text-sm text-gray-500">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3">S No.</th>
+                                    <th scope="col" class="px-6 py-3">Student Name</th>
+                                    <th scope="col" class="px-6 py-3">Address</th>
+                                    <th scope="col" class="px-6 py-3">Joining Date</th>
+                                    <th scope="col" class="px-6 py-3">Service</th>
+                                    <th scope="col" class="px-6 py-3">Fees</th>
+                                    <th scope="col" class="px-6 py-3">Transportation</th>
+                                    <th scope="col" class="px-6 py-3">Transportation Fees</th>
+                                    <th scope="col" class="px-6 py-3">Subscription Status</th>
+                                    <th scope="col" class="px-6 py-3">Guardian Name</th>
+                                    <th scope="col" class="px-6 py-3">Guardian Number</th>
+                                </tr>
+                            </thead>
+                            <tbody id="masterfileTableBody">
+                                <!-- Student data will be dynamically inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            `;
+            appContainer.innerHTML = masterfileHtml;
+            const tableBody = document.getElementById('masterfileTableBody');
+            
+            if (studentsData.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="11" class="px-6 py-4 text-center text-gray-500">No students added yet.</td></tr>`;
+                return;
+            }
+
+            studentsData.forEach((student, index) => {
+                const joinDate = DateTime.fromISO(student.joinDate);
+                const status = student.subscriptionStatus || 'Active'; // Default to Active
+                const statusColorClass = status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+
+                const row = document.createElement('tr');
+                row.className = `bg-white border-b hover:bg-gray-50`;
+                row.innerHTML = `
+                    <td class="px-6 py-4">${index + 1}</td>
+                    <td class="px-6 py-4 font-semibold text-gray-900">${student.name}</td>
+                    <td class="px-6 py-4">${student.address || 'N/A'}</td>
+                    <td class="px-6 py-4">${joinDate.toLocaleString(DateTime.DATE_MED)}</td>
+                    <td class="px-6 py-4">${student.serviceName}</td>
+                    <td class="px-6 py-4">SAR ${parseFloat(student.monthlyFee).toFixed(2)}</td>
+                    <td class="px-6 py-4">${student.transportation || 'N/A'}</td>
+                    <td class="px-6 py-4">SAR ${parseFloat(student.transportationFees || 0).toFixed(2)}</td>
+                    <td class="px-6 py-4">
+                        <select class="subscription-status-select p-1 rounded-md border border-gray-300 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 ${statusColorClass}" data-id="${student.id}">
+                            <option value="Active" class="bg-green-100 text-green-800" ${status === 'Active' ? 'selected' : ''}>Active</option>
+                            <option value="Inactive" class="bg-red-100 text-red-800" ${status === 'Inactive' ? 'selected' : ''}>Inactive</option>
+                        </select>
+                    </td>
+                    <td class="px-6 py-4">${student.guardianName || 'N/A'}</td>
+                    <td class="px-6 py-4">${student.guardianContactNumber || 'N/A'}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+            
+            // Add event listeners for new buttons
+            document.getElementById('addStudentForm').addEventListener('submit', addStudent);
+            document.querySelectorAll('.subscription-status-select').forEach(select => {
+                select.addEventListener('change', (e) => {
+                    const studentId = e.target.dataset.id;
+                    const newStatus = e.target.value;
+                    updateSubscriptionStatus(studentId, newStatus);
+                    e.target.className = `subscription-status-select p-1 rounded-md border border-gray-300 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 ${newStatus === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
+                });
+            });
+
+            // Event listener for auto-populating fees
+            const serviceNameSelect = document.getElementById('serviceName');
+            const monthlyFeeInput = document.getElementById('monthlyFee');
+            serviceNameSelect.addEventListener('change', (e) => {
+                const selectedService = e.target.value;
+                const fee = serviceCosts[selectedService];
+                if (fee) {
+                    monthlyFeeInput.value = fee.toFixed(2);
+                } else {
+                    monthlyFeeInput.value = '';
+                }
+            });
+
+            // Event listener for auto-populating transportation fees
+            const transportationSelect = document.getElementById('transportation');
+            const transportationFeesInput = document.getElementById('transportationFees');
+            transportationSelect.addEventListener('change', (e) => {
+                if (e.target.value === 'Yes') {
+                    transportationFeesInput.value = TRANSPORTATION_FEE;
+                } else {
+                    transportationFeesInput.value = '';
+                }
+            });
+
+            // Trigger change event on load to set initial fees if a default is selected
+            if (serviceNameSelect.value) {
+                serviceNameSelect.dispatchEvent(new Event('change'));
+            }
+            if (transportationSelect.value) {
+                transportationSelect.dispatchEvent(new Event('change'));
+            }
+        }
+
+        function renderOutstandingFeesView() {
+            const outstandingHtml = `
+                <section class="mb-6">
+                    <div class="flex items-center space-x-4 p-4 bg-gray-100 rounded-xl shadow-inner">
+                        <button id="checkPaymentsBtn" class="flex-shrink-0 bg-green-600 text-white font-bold py-2 px-4 rounded-full shadow-lg hover:bg-green-700 transition duration-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                           Check for Due Payments
+                        </button>
+                        <p class="text-gray-600 text-sm">
+                            Click to simulate an automatic check for all due payments. A message will be generated for each guardian with an outstanding balance if today is the 5th of the month.
+                        </p>
+                    </div>
+                </section>
+                <section>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Outstanding Fees</h2>
+                    <div class="overflow-x-auto shadow-md rounded-xl">
+                        <table class="w-full text-left text-sm text-gray-500">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3">Name</th>
+                                    <th scope="col" class="px-6 py-3">Service</th>
+                                    <th scope="col" class="px-6 py-3">Outstanding Balance</th>
+                                    <th scope="col" class="px-6 py-3">Last Payment Date</th>
+                                    <th scope="col" class="px-6 py-3">Guardian Info</th>
+                                    <th scope="col" class="px-6 py-3">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="outstandingTableBody">
+                                <!-- Student data will be dynamically inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="mt-4 text-sm text-gray-600">
+                        <span class="font-bold text-yellow-600 mr-2">●</span> The outstanding balance is highlighted in yellow if it's over 30 days overdue.
+                    </p>
+                    <p class="mt-2 text-sm text-gray-600">
+                        <span class="font-bold text-red-600 mr-2">●</span> The outstanding balance is highlighted in red if it's over 60 days overdue.
+                    </p>
+                </section>
+            `;
+            appContainer.innerHTML = outstandingHtml;
+            const tableBody = document.getElementById('outstandingTableBody');
+            
+            // Filter for active students with outstanding fees
+            const outstandingStudents = studentsData.filter(s => parseFloat(s.outstandingBalance) > 0 && s.subscriptionStatus === 'Active');
+            if (outstandingStudents.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">No active students with outstanding fees.</td></tr>`;
+                return;
+            }
+
+            outstandingStudents.forEach(student => {
+                const lastPaymentDate = student.lastPaymentDate ? DateTime.fromISO(student.lastPaymentDate) : null;
+                const outstandingBalance = parseFloat(student.outstandingBalance);
+
+                let balanceColorClass = 'text-gray-800'; // Default color
+                let daysSincePayment = lastPaymentDate ? systemDate.diff(lastPaymentDate, 'days').days : Infinity;
+                
+                if (daysSincePayment > 60) {
+                    balanceColorClass = 'text-red-600';
+                } else if (daysSincePayment > 30) {
+                    balanceColorClass = 'text-yellow-600';
+                }
+
+                // Calculate breakdown for tooltip
+                const feeHistory = feeHistoryData[student.id] || [];
+                let over60 = 0;
+                let thirtyToSixty = 0;
+                let lessThan30 = 0;
+                
+                feeHistory.forEach(fee => {
+                    if (!fee.paid) {
+                        const daysOverdue = systemDate.diff(DateTime.fromISO(fee.date), 'days').days;
+                        if (daysOverdue > 60) {
+                            over60 += fee.amount;
+                        } else if (daysOverdue > 30) {
+                            thirtyToSixty += fee.amount;
+                        } else {
+                            lessThan30 += fee.amount;
+                        }
+                    }
+                });
+                
+                const tooltipHtml = `
+                    <div class="font-bold mb-1">Aging Breakdown</div>
+                    <div>Over 60 Days: <span class="float-right font-semibold">SAR ${over60.toFixed(2)}</span></div>
+                    <div>30-60 Days: <span class="float-right font-semibold">SAR ${thirtyToSixty.toFixed(2)}</span></div>
+                    <div>Less than 30 Days: <span class="float-right font-semibold">SAR ${lessThan30.toFixed(2)}</span></div>
+                `;
+                
+                const row = document.createElement('tr');
+                row.className = `bg-white border-b hover:bg-gray-50`;
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 font-semibold text-gray-900">${student.name}</td>
+                    <td class="px-6 py-4">${student.serviceName}</td>
+                    <td class="px-6 py-4 font-bold tooltip ${balanceColorClass}">
+                        SAR ${outstandingBalance.toFixed(2)}
+                        <span class="tooltiptext">${tooltipHtml}</span>
+                    </td>
+                    <td class="px-6 py-4">${lastPaymentDate ? lastPaymentDate.toLocaleString(DateTime.DATE_MED) : 'N/A'}</td>
+                    <td class="px-6 py-4">
+                        <div>${student.guardianName || 'N/A'}</div>
+                        <div class="text-xs text-gray-400">${student.guardianContactNumber || 'N/A'}</div>
+                    </td>
+                    <td class="px-6 py-4 flex flex-col space-y-2">
+                        <button class="pay-btn bg-green-500 text-white font-medium py-1 px-3 rounded-lg hover:bg-green-600 transition duration-300" data-id="${student.id}" data-name="${student.name}" data-balance="${outstandingBalance}">
+                            Pay Now
+                        </button>
+                        ${daysSincePayment > 30 ? `
+                            <a href="https://wa.me/${student.guardianContactNumber}?text=${encodeURIComponent(`Dear ${student.guardianName}, this is a friendly reminder that the payment of SAR ${outstandingBalance.toFixed(2)} for ${student.name} is now overdue. Please proceed with the payment at your earliest convenience. Thank you!`)}" target="_blank" class="reminder-btn bg-blue-500 text-white font-medium text-center py-1 px-3 rounded-lg hover:bg-blue-600 transition duration-300">
+                                WhatsApp
+                            </a>
+                        ` : ''}
+                         ${daysSincePayment > 60 ? `
+                            <a href="tel:${student.guardianContactNumber}" class="call-btn bg-yellow-500 text-white font-medium text-center py-1 px-3 rounded-lg hover:bg-yellow-600 transition duration-300">
+                                Call
+                            </a>
+                        ` : ''}
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+            
+            document.querySelectorAll('.pay-btn').forEach(btn => btn.addEventListener('click', e => {
+                const studentId = e.target.dataset.id;
+                const studentName = e.target.dataset.name;
+                const outstandingBalance = parseFloat(e.target.dataset.balance);
+                showPaymentModal(studentId, studentName, outstandingBalance);
+            }));
+            document.getElementById('checkPaymentsBtn').addEventListener('click', handleAutoSend);
+        }
+
+        function renderDashboardView() {
+            const dashboardHtml = `
+                <section class="mb-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Service-wise Performance</h2>
+                    <div class="overflow-x-auto shadow-md rounded-xl">
+                        <table class="w-full text-left text-sm text-gray-500">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3">Service</th>
+                                    <th scope="col" class="px-6 py-3">Students</th>
+                                    <th scope="col" class="px-6 py-3">Total Revenue</th>
+                                    <th scope="col" class="px-6 py-3">Total Cost</th>
+                                    <th scope="col" class="col-span-2 px-6 py-3">Total Profit</th>
+                                </tr>
+                            </thead>
+                            <tbody id="servicePerformanceTableBody">
+                                <!-- Service data will be dynamically inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                <section class="mb-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Income Distribution by Service</h2>
+                    <div class="bg-gray-100 p-6 rounded-xl shadow-inner">
+                        <canvas id="incomePieChart"></canvas>
+                    </div>
+                </section>
+                <section class="mb-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Monthly Trends by Service</h2>
+                    <div id="monthlyChartsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Individual monthly trend charts will be dynamically inserted here -->
+                    </div>
+                </section>
+                <section>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Overall Monthly Cost Analysis</h2>
+                    <div class="bg-gray-100 p-6 rounded-xl shadow-inner">
+                        <canvas id="costChart"></canvas>
+                    </div>
+                </section>
+            `;
+            appContainer.innerHTML = dashboardHtml;
+            updateDashboardData();
+        }
+
+        function renderAccountingView() {
+            const accountingHtml = `
+                <section class="mb-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Profit & Loss Summary</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
+                        <div class="bg-blue-50 p-6 rounded-xl shadow-md">
+                            <p class="text-lg font-medium text-blue-600">Total Revenue</p>
+                            <p id="accountingTotalRevenue" class="text-3xl font-bold text-blue-800 mt-1">SAR 0.00</p>
+                        </div>
+                        <div class="bg-yellow-50 p-6 rounded-xl shadow-md">
+                            <p class="text-lg font-medium text-yellow-600">Total Costs</p>
+                            <p id="accountingTotalCosts" class="text-3xl font-bold text-yellow-800 mt-1">SAR 0.00</p>
+                        </div>
+                        <div class="bg-green-50 p-6 rounded-xl shadow-md">
+                            <p class="text-lg font-medium text-green-600">Net Profit</p>
+                            <p id="accountingNetProfit" class="text-3xl font-bold text-green-800 mt-1">SAR 0.00</p>
+                        </div>
+                    </div>
+                </section>
+                <section class="mb-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Add a New Cost</h2>
+                    <form id="addCostForm" class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 p-6 rounded-xl border border-gray-200">
+                        <input type="text" id="costDescription" placeholder="Description (e.g., Rent)" required class="p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input type="number" id="costAmount" placeholder="Amount (SAR)" required class="p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input type="date" id="costDate" required class="p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <select id="costCenterSelect" required class="p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">Select Cost Center</option>
+                            ${services.map(s => `<option value="${s}">${s}</option>`).join('')}
+                        </select>
+                        <div class="col-span-1 md:col-span-4 flex justify-end">
+                            <button type="submit" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 transition duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Add Cost</button>
+                        </div>
+                    </form>
+                </section>
+                <section>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">All Recorded Costs</h2>
+                    <div class="overflow-x-auto shadow-md rounded-xl">
+                        <table class="w-full text-left text-sm text-gray-500">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3">Date</th>
+                                    <th scope="col" class="px-6 py-3">Description</th>
+                                    <th scope="col" class="px-6 py-3">Cost Center</th>
+                                    <th scope="col" class="px-6 py-3">Amount (SAR)</th>
+                                    <th scope="col" class="px-6 py-3">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="costsTableBody">
+                                <!-- Cost data will be dynamically inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            `;
+            appContainer.innerHTML = accountingHtml;
+            
+            // Populate the cost table
+            const costsTableBody = document.getElementById('costsTableBody');
+            costsTableBody.innerHTML = '';
+            costsData.forEach(cost => {
+                const costDate = DateTime.fromISO(cost.date);
+                const row = document.createElement('tr');
+                row.className = `bg-white border-b hover:bg-gray-50`;
+                row.innerHTML = `
+                    <td class="px-6 py-4">${costDate.toLocaleString(DateTime.DATE_MED)}</td>
+                    <td class="px-6 py-4">${cost.description}</td>
+                    <td class="px-6 py-4">${cost.costCenter || 'N/A'}</td>
+                    <td class="px-6 py-4">SAR ${parseFloat(cost.amount).toFixed(2)}</td>
+                    <td class="px-6 py-4">
+                        <button class="delete-cost-btn text-red-600 hover:text-red-800 font-semibold" data-id="${cost.id}">
+                            Delete
+                        </button>
+                    </td>
+                `;
+                costsTableBody.appendChild(row);
+            });
+            
+            // Add event listeners
+            document.getElementById('addCostForm').addEventListener('submit', addCost);
+            document.querySelectorAll('.delete-cost-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const costId = e.target.dataset.id;
+                    deleteCost(costId);
+                });
+            });
+            
+            // Update summary metrics for the accounting view
+            const activeStudents = studentsData.filter(student => student.subscriptionStatus === 'Active');
+            const totalRevenue = activeStudents.reduce((sum, student) => sum + parseFloat(student.monthlyFee || 0) + parseFloat(student.transportationFees || 0), 0);
+            const totalStudentCost = activeStudents.reduce((sum, student) => sum + parseFloat(student.monthlyCost || 0), 0);
+            const totalOtherCosts = costsData.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
+            const totalCost = totalStudentCost + totalOtherCosts;
+            const totalProfit = totalRevenue - totalCost;
+
+            document.getElementById('accountingTotalRevenue').textContent = `SAR ${totalRevenue.toFixed(2)}`;
+            document.getElementById('accountingTotalCosts').textContent = `SAR ${totalCost.toFixed(2)}`;
+            document.getElementById('accountingNetProfit').textContent = `SAR ${totalProfit.toFixed(2)}`;
+            document.getElementById('accountingNetProfit').classList.toggle('text-red-600', totalProfit < 0);
+            document.getElementById('accountingNetProfit').classList.toggle('text-green-600', totalProfit >= 0);
+        }
+
+        function updateDashboardData() {
+            // First, calculate service-wise performance from current studentsData
+            const serviceMetrics = studentsData.reduce((acc, student) => {
+                const service = student.serviceName;
+                if (!acc[service]) {
+                    acc[service] = {
+                        students: 0,
+                        revenue: 0,
+                        cost: 0,
+                        profit: 0
+                    };
+                }
+                // Only count active students for performance metrics
+                if (student.subscriptionStatus === 'Active') {
+                    acc[service].students++;
+                    // Revenue is the total monthly fee for all active students in the service
+                    acc[service].revenue += parseFloat(student.monthlyFee) + parseFloat(student.transportationFees || 0);
+                }
+                acc[service].cost += parseFloat(student.monthlyCost);
+                // Also add costs from the new 'costs' collection, grouped by cost center
+                const serviceCosts = costsData.filter(c => c.costCenter === service).reduce((sum, c) => sum + parseFloat(c.amount), 0);
+                acc[service].cost += serviceCosts;
+                acc[service].profit = acc[service].revenue - acc[service].cost;
+                return acc;
+            }, {});
+
+            const serviceTableBody = document.getElementById('servicePerformanceTableBody');
+            serviceTableBody.innerHTML = '';
+            for (const service in serviceMetrics) {
+                const metrics = serviceMetrics[service];
+                const row = document.createElement('tr');
+                row.className = `bg-white border-b hover:bg-gray-50`;
+                row.innerHTML = `
+                    <td class="px-6 py-4 font-semibold text-gray-900">${service}</td>
+                    <td class="px-6 py-4">${metrics.students}</td>
+                    <td class="px-6 py-4">SAR ${metrics.revenue.toFixed(2)}</td>
+                    <td class="px-6 py-4">SAR ${metrics.cost.toFixed(2)}</td>
+                    <td class="px-6 py-4 font-bold ${metrics.profit >= 0 ? 'text-green-600' : 'text-red-600'}">SAR ${metrics.profit.toFixed(2)}</td>
+                `;
+                serviceTableBody.appendChild(row);
+            }
+
+            // Pie chart data for income distribution
+            const serviceRevenueLabels = Object.keys(serviceMetrics);
+            const serviceRevenueData = serviceRevenueLabels.map(service => serviceMetrics[service].revenue);
+            const pieColors = ['#4f46e5', '#10b981', '#f97316', '#ef4444', '#3b82f6', '#8b5cf6', '#ec4899', '#facc15', '#a8a29e', '#6b7280', '#0f766e'];
+            
+            new Chart(document.getElementById('incomePieChart').getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels: serviceRevenueLabels,
+                    datasets: [{
+                        label: 'Revenue by Service',
+                        data: serviceRevenueData,
+                        backgroundColor: pieColors
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.raw !== null) {
+                                        label += `SAR ${context.raw.toFixed(2)}`;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Generate some sample monthly data for the dashboard
+            generateMonthlyDashboardData();
+            
+            // Prepare data for the overall cost trend chart
+            const costLabels = dashboardData.map(item => item.month);
+            const costData = dashboardData.map(item => item.totalCost);
+
+            // Destroy and re-create the overall cost chart
+            if (myCostChart) myCostChart.destroy();
+            const costCtx = document.getElementById('costChart').getContext('2d');
+            myCostChart = new Chart(costCtx, {
+                type: 'bar',
+                data: {
+                    labels: costLabels,
+                    datasets: [{
+                        label: 'Monthly Total Cost',
+                        data: costData,
+                        backgroundColor: '#3b82f6',
+                        borderColor: '#1d4ed8',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function generateMonthlyDashboardData() {
+            // Generate some sample data for the dashboard
+            const months = [];
+            for (let i = 5; i >= 0; i--) {
+                months.push(systemDate.minus({ months: i }).toFormat('MMMM yyyy'));
+            }
+            
+            dashboardData = [];
+            months.forEach(month => {
+                services.forEach(service => {
+                    dashboardData.push({
+                        month: month,
+                        serviceName: service,
+                        totalFees: Math.floor(Math.random() * 5000) + 1000,
+                        totalOutstanding: Math.floor(Math.random() * 1000),
+                        totalCost: Math.floor(Math.random() * 3000) + 500
+                    });
+                });
+            });
+        }
+
+        // --- Core Data Functions ---
+
+        async function addStudent(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('studentName').value.trim();
+            const address = document.getElementById('address').value.trim();
+            const joinDate = document.getElementById('joinDate').value;
+            const serviceName = document.getElementById('serviceName').value;
+            const transportation = document.getElementById('transportation').value;
+            const guardianName = document.getElementById('guardianName').value.trim();
+            const guardianContactNumber = document.getElementById('guardianContactNumber').value.trim();
+            const monthlyFee = parseFloat(document.getElementById('monthlyFee').value);
+            const transportationFees = parseFloat(document.getElementById('transportationFees').value || 0);
+
+            if (name === "" || address === "" || joinDate === "" || serviceName === "" || transportation === "" || guardianName === "" || guardianContactNumber === "" || isNaN(monthlyFee)) {
+                showModal("Validation Error", "Please fill in all fields correctly.");
+                return;
+            }
+            
+            const monthlyCost = serviceCosts[serviceName] || 50;
+            const totalMonthlyFee = monthlyFee + transportationFees;
+
+            const joinDateTime = DateTime.fromISO(joinDate);
+            let initialOutstanding = 0;
+            let feeHistory = [];
+            // If the student joins in the current month, prorate the fee
+            if (joinDateTime.month === systemDate.month && joinDateTime.year === systemDate.year) {
+                const daysInMonth = systemDate.daysInMonth;
+                const daysRemaining = daysInMonth - joinDateTime.day + 1;
+                initialOutstanding = (totalMonthlyFee / daysInMonth) * daysRemaining;
+            } else {
+                initialOutstanding = totalMonthlyFee;
+            }
+
+            // Create initial fee history entry
+            if (initialOutstanding > 0) {
+                feeHistory.push({ amount: initialOutstanding, date: systemDate.toISODate(), paid: false });
+            }
+
+            const newStudent = {
+                id: 'student_' + Date.now(),
+                name,
+                joinDate,
+                monthlyFee,
+                outstandingBalance: initialOutstanding,
+                lastPaymentDate: joinDate, // Set last payment date to join date
+                serviceName,
+                monthlyCost,
+                guardianName,
+                guardianContactNumber,
+                subscriptionStatus: 'Active',
+                address,
+                transportation,
+                transportationFees,
+                feeHistory: JSON.stringify(feeHistory),
+                createdAt: DateTime.local().toMillis()
+            };
+            
+            studentsData.push(newStudent);
+            saveData();
+            document.getElementById('addStudentForm').reset();
+            renderView(currentView);
+            showModal("Success", "Student added successfully.");
+        }
+
+        async function updateSubscriptionStatus(studentId, newStatus) {
+            const student = studentsData.find(s => s.id === studentId);
+            if (student) {
+                student.subscriptionStatus = newStatus;
+                saveData();
+                showModal("Status Updated", `Student's subscription status has been changed to ${newStatus}.`);
+            }
+        }
+
+        async function addCost(e) {
+            e.preventDefault();
+            const description = document.getElementById('costDescription').value.trim();
+            const amount = parseFloat(document.getElementById('costAmount').value);
+            const date = document.getElementById('costDate').value;
+            const costCenter = document.getElementById('costCenterSelect').value;
+
+            if (!description || isNaN(amount) || amount <= 0 || !date || !costCenter) {
+                showModal("Validation Error", "Please fill in all fields correctly.");
+                return;
+            }
+
+            const newCost = {
+                id: 'cost_' + Date.now(),
+                description,
+                amount,
+                date,
+                costCenter,
+                createdAt: DateTime.local().toMillis()
+            };
+            
+            costsData.push(newCost);
+            saveData();
+            document.getElementById('addCostForm').reset();
+            renderView(currentView);
+            showModal("Success", "Cost added successfully.");
+        }
+
+        async function deleteCost(costId) {
+            showConfirmModal("Confirm Delete", "Are you sure you want to delete this cost entry? This cannot be undone.", () => {
+                costsData = costsData.filter(cost => cost.id !== costId);
+                saveData();
+                renderView(currentView);
+                showModal("Deleted", "The cost entry has been deleted.");
+            });
+        }
+
+        function showPaymentModal(studentId, studentName, outstandingBalance) {
+            paymentModalTitle.textContent = `Process Payment for ${studentName}`;
+            paymentModalMessage.innerHTML = `Current outstanding balance: <b>SAR ${outstandingBalance.toFixed(2)}</b>`;
+            paymentAmountInput.value = outstandingBalance.toFixed(2);
+            paymentAmountInput.max = outstandingBalance;
+            paymentModal.classList.remove('hidden');
+
+            const processHandler = async () => {
+                const paymentAmount = parseFloat(paymentAmountInput.value);
+
+                if (isNaN(paymentAmount) || paymentAmount <= 0) {
+                    showModal("Invalid Amount", "Please enter a valid amount greater than 0.");
+                    return;
+                }
+
+                if (paymentAmount > outstandingBalance) {
+                    showModal("Invalid Amount", "Payment amount cannot exceed the outstanding balance.");
+                    return;
+                }
+    
+                const student = studentsData.find(s => s.id === studentId);
+                if (!student) {
+                    showModal("Error", "Student not found.");
+                    return;
+                }
+                
+                let currentFeeHistory = JSON.parse(student.feeHistory || '[]');
+                let remainingPayment = paymentAmount;
+                const paidOffEntries = [];
+
+                // Sort fees by due date (FIFO)
+                currentFeeHistory.sort((a, b) => DateTime.fromISO(a.date).toMillis() - DateTime.fromISO(b.date).toMillis());
+
+                for (let i = 0; i < currentFeeHistory.length; i++) {
+                    let fee = currentFeeHistory[i];
+                    if (fee.paid) continue; // Skip already paid fees
+                    
+                    if (remainingPayment >= fee.amount) {
+                        remainingPayment -= fee.amount;
+                        fee.paid = true;
+                        paidOffEntries.push(fee);
+                    } else if (remainingPayment > 0) {
+                        // Partial payment, update the fee amount
+                        fee.amount -= remainingPayment;
+                        remainingPayment = 0;
+                        break;
+                    } else {
+                        break; // No more payment to apply
+                    }
+                }
+
+                student.outstandingBalance = parseFloat(student.outstandingBalance) - paymentAmount;
+                student.lastPaymentDate = systemDate.toISODate();
+                student.feeHistory = JSON.stringify(currentFeeHistory);
+                
+                saveData();
+                paymentModal.classList.add('hidden');
+                renderView(currentView);
+                showModal("Payment Successful", `SAR ${paymentAmount.toFixed(2)} has been successfully processed for ${studentName}.`);
+            };
+
+            processPaymentBtn.onclick = processHandler;
+            cancelPaymentBtn.onclick = () => paymentModal.classList.add('hidden');
+        }
+
+        function handleReset() {
+            showConfirmModal("Confirm Reset", "Are you sure you want to delete all student and cost data? This action cannot be undone.", () => {
+                studentsData = [];
+                costsData = [];
+                dashboardData = [];
+                saveData();
+                seedInitialData();
+                renderView(currentView);
+                showModal("Data Reset", "All data has been reset.");
+            });
+        }
+        
+        function handleAutoSend() {
+            if (systemDate.day !== 5) {
+                showModal("Automation Status", `Today is not the 5th of the month. No automated messages will be sent.`);
+                return;
+            }
+            
+            const outstandingList = studentsData.filter(s => parseFloat(s.outstandingBalance) > 0);
+            if (outstandingList.length === 0) {
+                showModal("Automation Status", `Today is the 5th of the month, but no payments are due.`);
+                return;
+            }
+            
+            let messages = '';
+            outstandingList.forEach(student => {
+                const totalMonthlyFee = parseFloat(student.monthlyFee) + parseFloat(student.transportationFees || 0);
+                const previousBalance = student.outstandingBalance > totalMonthlyFee ? student.outstandingBalance - totalMonthlyFee : 0;
+                const message = `
+                    <p class="mb-4">
+                        <b>To:</b> ${student.guardianName} (${student.guardianContactNumber})
+                    </p>
+                    <p class="mb-2">
+                        Dear Guardian, your payment for Wahid Sports Academy is now due for the month of ${systemDate.toLocaleString({ month: 'long', year: 'numeric' })}.
+                    </p>
+                    <ul class="list-disc list-inside mb-4">
+                        <li>Monthly Fee: SAR ${student.monthlyFee.toFixed(2)}</li>
+                        ${student.transportation === 'Yes' ? `<li>Transportation Fees: SAR ${student.transportationFees.toFixed(2)}</li>` : ''}
+                        <li>Carried Forward Balance: SAR ${previousBalance.toFixed(2)}</li>
+                        <li><b>Total Outstanding: SAR ${student.outstandingBalance.toFixed(2)}</b></li>
+                    </ul>
+                    <a href="https://wa.me/${student.guardianContactNumber}?text=${encodeURIComponent(`Dear ${student.guardianName}, your payment for Wahid Sports Academy is now due for the month of ${systemDate.toLocaleString({ month: 'long', year: 'numeric' })}.
+The monthly fee is SAR ${student.monthlyFee.toFixed(2)}.${student.transportation === 'Yes' ? ` Transportation fees are SAR ${student.transportationFees.toFixed(2)}.` : ''} Your carried forward balance from last month is SAR ${previousBalance.toFixed(2)}, bringing your total outstanding amount to SAR ${student.outstandingBalance.toFixed(2)}. Thank you for your cooperation.`)}" target="_blank" class="block w-full text-center bg-blue-500 text-white font-medium py-2 rounded-lg hover:bg-blue-600 transition duration-300">
+                        View WhatsApp Message
+                    </a>
+                    <hr class="my-6 border-t-2 border-gray-200" />
+                `;
+                messages += message;
+            });
+            
+            showModal("Automated Reminders", `<div class="text-left max-h-96 overflow-y-auto">${messages}</div>`);
+        }
+
+        // Initial rendering of the app
+        window.onload = () => {
+            loadData();
+            renderView(currentView);
+        };
+    </script>
+</body>
+</html>
